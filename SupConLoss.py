@@ -21,7 +21,7 @@ class SupConLoss(nn.Module):
 
         # 减去相似度矩阵每一行的最大值，防止后面计算exp上溢
         similarity_matrix_max, _ = torch.max(similarity_matrix, dim=1,  keepdim=True)
-        similarity_matrix = similarity_matrix - similarity_matrix_max
+        similarity_matrix = similarity_matrix - similarity_matrix_max.detach()
 
         # 生成掩码矩阵，表示相似度矩阵中哪些元素是同类的（不包括本身）
         labels = labels.reshape(-1, 1) # 增加一个维度，用于后面转置计算
@@ -34,7 +34,7 @@ class SupConLoss(nn.Module):
 
         # 计算对比损失公式中第一个求和里面的项
         log_probs = - similarity_matrix + \
-                    torch.log(exp_similarity_matrix.sum(1,keepdims=True))
+                    torch.log(exp_similarity_matrix.sum(1, keepdims=True))
 
         # 求对比损失公式的第一个求和
         mean_log_probs = (log_probs * mask_matrix).sum(1) / mask_matrix.sum(1)
@@ -47,11 +47,20 @@ class SupConLoss(nn.Module):
 
 
 if __name__ == '__main__':
-    representations = torch.tensor([[1, 2, 3], [1.2, 2.2, 3.3],
-                                    [1.3, 2.3, 4.3], [1.5, 2.6, 3.9],
-                                    [5.1, 2.1, 3.4]])
-    representations = F.normalize(representations, dim=1)
-    print(representations)
-    labels = torch.tensor([1, 0, 0, 1, 1])
-    labels = labels.repeat(2, 1)
-    print(labels)
+    device = torch.device("cpu")
+    features_1 = torch.tensor([[1.1, 2.1, 3.1], [7.1, 8.1, 9.1]]).float().to(device)
+    features_2 = torch.tensor([[4.1, 5.1, 6.1], [10.1, 11.1, 12.1]]).float().to(device)
+    features_1 = F.normalize(features_1, dim=1)
+    features_2 = F.normalize(features_2, dim=1)
+
+    features = torch.cat([features_1, features_2], dim=0)
+    features = F.normalize(features, dim=1)
+    labels = torch.tensor([0, 1]).float().to(device)
+    labels = labels.repeat(2)
+    print(features, labels)
+
+    lossfn = SupConLoss()
+    loss = lossfn(features, labels)
+    print(loss)
+
+

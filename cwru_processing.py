@@ -159,7 +159,7 @@ def CWRU_DataLoader(d_path, length=400, step_size=200, train_number=1800, test_v
     valid_dataset = TensorDataset(Valid_X, Valid_Y)
     test_dataset = TensorDataset(Test_X, Test_Y)
     train_loader = DataLoader(train_dataset, batch_size=batch_size,
-                              sampler=ClassAwareSampler(Train_Y, 1))
+                              sampler=ClassAwareSampler(Train_Y, 6))
     valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     return train_loader, valid_loader, test_loader

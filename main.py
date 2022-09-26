@@ -44,7 +44,7 @@ def test(model_dict, device, lossfn_dict, test_loader):
             data = data.reshape(data.shape[0], 1, data.shape[1])
             feature = model_dict['Backbone'](data)
             output = model_dict['Classifier'](feature)
-            loss = lossfn_dict['classifier_Loss'](output, target)
+            loss = lossfn_dict['classifier_loss'](output, target)
 
             prec1, prec5 = accuracy(output, target, topk=(1, 5))
 
@@ -55,7 +55,7 @@ def test(model_dict, device, lossfn_dict, test_loader):
     wandb.log({
         "Test top 1 Acc": test_top1.avg,
         "Test top5 Acc": test_top5.avg,
-        "Train Loss": test_loss.avg})
+        "Test Loss": test_loss.avg})
     # return test_top1.avg 如果是验证集，则可以返回acc
 
 def train(model_dict, device, train_loader, optimizer, lossfn_dict, epoch, epochs, lamda):
@@ -98,16 +98,16 @@ def train(model_dict, device, train_loader, optimizer, lossfn_dict, epoch, epoch
         feature2 = F.normalize(feature2, dim=1)
         # 合并feature1和feature2
         feature_supcon = torch.vstack((feature1, feature2))
-        # 将标签复制一遍
+        # 将标签复制一遍，相当于合并feature1和2的标签
         sup_target = target.repeat(2)
         # 计算对比损失
-        sup_loss = lossfn_dict['feature_Loss'](feature_supcon, sup_target)
+        sup_loss = lossfn_dict['feature_loss'](feature_supcon, sup_target)
 
         # 利用原始数据经过网络生成分类特征
         feature = model_dict['Backbone'](data)
         output = model_dict['Classifier'](feature)
         # 计算分类损失
-        classifier_loss = lossfn_dict['classifier_Loss'](output, target)
+        classifier_loss = lossfn_dict['classifier_loss'](output, target)
 
         # 综合计算损失
         total_loss = classifier_loss + lamda * sup_loss
@@ -170,10 +170,10 @@ def main(config):
 
     # 定义损失函数
     lossfn_dict = {}
-    lossfn_dict['feature_Loss'] = eval(config.lossfn_names['feature_Loss'])\
-                                        (**config.lossfn_params['feature_Loss']).to(device)
-    lossfn_dict['classifier_Loss'] = eval(config.lossfn_names['classifier_Loss'])\
-                                        (**config.lossfn_params['classifier_Loss']).to(device)
+    lossfn_dict['feature_loss'] = eval(config.lossfn_names['feature_loss'])\
+                                        (**config.lossfn_params['feature_loss']).to(device)
+    lossfn_dict['classifier_loss'] = eval(config.lossfn_names['classifier_loss'])\
+                                        (**config.lossfn_params['classifier_loss']).to(device)
 
     # 定义优化器
     optim_params_list = [{'params': model_dict['Backbone'].parameters(),
@@ -220,7 +220,7 @@ def main(config):
 
 if __name__ == '__main__':
     """定义wandb上传项目名"""
-    wandb.init(project="CA_Supcon", name="lr=0.0003")
+    wandb.init(project="CA_Supcon", name="IB=10:1")
     wandb.watch_called = False
 
     """定义上传的超参数"""
@@ -242,12 +242,12 @@ if __name__ == '__main__':
                         'Classifier': DotProduct_Classifier_params}  # 网络模型的相关参数
 
     """损失函数的参数"""
-    config.lossfn_names = {'feature_Loss': 'SupConLoss',
-                        'classifier_Loss': 'nn.CrossEntropyLoss'}  # 损失函数
+    config.lossfn_names = {'feature_loss': 'SupConLoss',
+                        'classifier_loss': 'nn.CrossEntropyLoss'}  # 损失函数
     SupConLoss_params = {'temperature': 0.1}
     CrossEntropyLoss_params = {}
-    config.lossfn_params = {'feature_Loss': SupConLoss_params,
-                            'classifier_Loss': CrossEntropyLoss_params}  # 损失函数的参数
+    config.lossfn_params = {'feature_loss': SupConLoss_params,
+                            'classifier_loss': CrossEntropyLoss_params}  # 损失函数的参数
 
     """训练的相关参数"""
     config.epochs = 50  # 训练轮数
